@@ -1,0 +1,51 @@
+policies:
+- name: delete-nlbs
+  resource: app-elb
+  filters:
+    - and:
+      - or: 
+        - type: value
+          key: LoadBalancerArn
+          op: regex
+          value: "^((?!USERKEYS).)*$"
+        - 'tag:deletesAtMidnight': present
+      - not:
+        - 'tag:doNotDelete': present
+        - 'tag:DoNotDelete': present
+        - type: value
+          key: tag:Name
+          op: regex
+          value:  "^.*DONOTDELETEKEYS.*$"
+  actions:
+    - delete
+    ### option for notifying slack / via email (needs lambda permissions)
+    # - type: notify
+    #   slack_template: slack_default
+    #   slack_msg_color: danger
+    #   violation_desc: No violation.
+    #   action_desc: No action taken. 
+    #   to:
+    #     - https://hooks.slack.com/services/T0000000000/B000000000/XXXXXXXXXXXXXXX
+    #   transport:
+    #     type: sqs
+    #     queue: queue-url
+
+- name: tag-day-old-nlbs
+  resource: app-elb
+  filters:
+    - and:
+      - type: value
+        key: LoadBalancerArn
+        op: regex
+        value: "^.*USERKEYS.*$"
+      - not:
+        - 'tag:doNotDelete': present
+        - 'tag:DoNotDelete': present
+        - type: value
+          key: tag:Name
+          op: regex
+          value:  "^.*DONOTDELETEKEYS.*$"
+  actions:
+    - type: tag
+      tags:
+        deletesAtMidnight: ‘true'

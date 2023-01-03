@@ -1,0 +1,46 @@
+policies:
+- name: delete-instances
+  resource: aws.ec2
+  filters:
+    - and:
+      - or: 
+        # instance name not in accepted user keys
+        - type: value
+          key: tag:Name
+          op: regex
+          #doesNOTcontain
+          value:  "^((?!USERKEYS).)*$"
+        # instance was tagged to delete yesterday
+        - 'tag:deletesAtMidnight': present
+      # instance is not doNotDelete
+      - not:
+        - 'tag:doNotDelete': present
+        - 'tag:DoNotDelete': present
+        - type: value
+          key: tag:Name
+          op: regex
+          value:  "^.*DONOTDELETEKEYS.*$"
+  actions:
+    - terminate
+
+- name: tag-day-old-instances
+  resource: aws.ec2
+  filters:
+    - and:
+      # instance is named with accepted user key
+      - type: value
+        key: tag:Name
+        op: regex
+        value:  "^.*USERKEYS.*$"
+      # instance is not doNotDelete
+      - not:
+        - 'tag:doNotDelete': present
+        - 'tag:DoNotDelete': present
+        - type: value
+          key: tag:Name
+          op: regex
+          value:  "^.*DONOTDELETEKEYS.*$"
+  actions:
+    - type: tag
+      tags:
+        deletesAtMidnight: ‘true'
